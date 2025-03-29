@@ -1,0 +1,113 @@
+import sqlite3
+import tkinter as tk
+from tkinter import ttk, messagebox
+
+# Database Initialization
+def init_db():
+    conn = sqlite3.connect("store_inventory.db")
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS inventory (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        product_name TEXT NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        price REAL NOT NULL)''')
+    conn.commit()
+    conn.close()
+
+# Add Product
+def add_product():
+    name = name_entry.get()
+    quantity = quantity_entry.get()
+    price = price_entry.get()
+    if name and quantity.isdigit() and price.replace('.', '', 1).isdigit():
+        conn = sqlite3.connect("store_inventory.db")
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO inventory (product_name, quantity, price) VALUES (?, ?, ?)",
+                       (name, int(quantity), float(price)))
+        conn.commit()
+        conn.close()
+        update_list()
+    else:
+        messagebox.showerror("Error", "Invalid input! Please enter valid details.")
+
+# Update Product
+def update_product():
+    selected = tree.selection()
+    if selected:
+        item_id = tree.item(selected)['values'][0]
+        name = name_entry.get()
+        quantity = quantity_entry.get()
+        price = price_entry.get()
+        if name and quantity.isdigit() and price.replace('.', '', 1).isdigit():
+            conn = sqlite3.connect("store_inventory.db")
+            cursor = conn.cursor()
+            cursor.execute("UPDATE inventory SET product_name=?, quantity=?, price=? WHERE id=?",
+                           (name, int(quantity), float(price), item_id))
+            conn.commit()
+            conn.close()
+            update_list()
+        else:
+            messagebox.showerror("Error", "Invalid input!")
+    else:
+        messagebox.showerror("Error", "Select an item to update.")
+
+# Delete Product
+def delete_product():
+    selected = tree.selection()
+    if selected:
+        item_id = tree.item(selected)['values'][0]
+        conn = sqlite3.connect("store_inventory.db")
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM inventory WHERE id=?", (item_id,))
+        conn.commit()
+        conn.close()
+        update_list()
+    else:
+        messagebox.showerror("Error", "Select an item to delete.")
+
+# Display Inventory
+def update_list():
+    tree.delete(*tree.get_children())
+    conn = sqlite3.connect("store_inventory.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM inventory")
+    for row in cursor.fetchall():
+        tree.insert("", "end", values=row)
+    conn.close()
+
+# GUI Setup
+root = tk.Tk()
+root.title("Store Inventory System")
+root.geometry("600x400")
+
+# Labels and Entries
+tk.Label(root, text="Product Name:").grid(row=0, column=0)
+name_entry = tk.Entry(root)
+name_entry.grid(row=0, column=1)
+
+tk.Label(root, text="Quantity:").grid(row=1, column=0)
+quantity_entry = tk.Entry(root)
+quantity_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Price:").grid(row=2, column=0)
+price_entry = tk.Entry(root)
+price_entry.grid(row=2, column=1)
+
+# Buttons
+tk.Button(root, text="Add", command=add_product).grid(row=3, column=0, columnspan=2)
+tk.Button(root, text="Update", command=update_product).grid(row=4, column=0, columnspan=2)
+tk.Button(root, text="Delete", command=delete_product).grid(row=5, column=0, columnspan=2)
+
+# TreeView for displaying inventory
+tree = ttk.Treeview(root, columns=("ID", "Product Name", "Quantity", "Price"), show="headings")
+tree.heading("ID", text="ID")
+tree.heading("Product Name", text="Product Name")
+tree.heading("Quantity", text="Quantity")
+tree.heading("Price", text="Price")
+tree.grid(row=6, column=0, columnspan=2)
+
+# Initialize Database and Load Data
+init_db()
+update_list()
+
+root.mainloop()
